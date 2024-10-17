@@ -2,7 +2,8 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request
 import sqlalchemy.exc
 from sqlmodel import col, select
-from libs.db import SessionDep, User
+from app.models import User
+from libs.db import SessionDep
 
 # __all__ = ["get_current_user", "CurrentUser"]
 

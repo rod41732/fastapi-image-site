@@ -8,8 +8,9 @@ from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from pydantic import BaseModel
 from sqlmodel import SQLModel, col, select
 
+from app.models import User
 from constants import UPLOAD_DIR
-from libs.db import User, create_db_and_tables, SessionDep
+from libs.db import create_db_and_tables, SessionDep
 import os
 
 router = APIRouter()
@@ -20,6 +21,13 @@ def dev_drop_table(session: SessionDep):
     SQLModel.metadata.drop_all(session.connection())
     create_db_and_tables()
     return {"details": "Dropped and re-created all tables"}
+
+
+@router.post("/drop-table")
+def dev_drop_table_only(session: SessionDep):
+    SQLModel.metadata.drop_all(session.connection())
+    # create_db_and_tables()
+    return {"details": "Dropped tables"}
 
 
 @router.post("/list-users", response_model=list[User])

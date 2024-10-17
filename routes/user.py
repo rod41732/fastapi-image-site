@@ -5,8 +5,9 @@ import sqlalchemy
 import sqlalchemy.exc
 from sqlmodel import select
 
+from app.models import User, UserCreate, UserPublic
 from libs.common import ErrorDetail, MessageResponse
-from libs.db import User, UserCreate, UserPublic, SessionDep
+from libs.db import SessionDep
 from libs.dependencies import CurrentUser
 from libs.password import PasswordValidationError, hash_password, verify_password
 
