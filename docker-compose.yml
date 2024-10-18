@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: postgres:17.0
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: image_site
+    ports:
+      - 5435:5432

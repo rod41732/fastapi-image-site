@@ -96,29 +96,6 @@ class DevUploadFile(BaseModel):
     name: str
 
 
-class UploadError(Exception):
-    pass
-
-
-def save_file(file: UploadFile, dst_dir: str):
-    mime_type = file.content_type
-    if not mime_type:
-        raise UploadError("Missing content-type")
-    ext = mimetypes.guess_extension(mime_type)
-    if not ext:
-        raise UploadError(f"Cannot determine extension for mimetype {mime_type}")
-
-    # file.file.rollover()
-
-    name = f"upload-{uuid.uuid4()}{ext}"
-    dst_path = os.path.join(dst_dir, name)
-    logging.info(f"-- copying {file.file.name} to {dst_path}")
-    with open(dst_path, "wb") as fdst:
-        shutil.copyfileobj(file.file, fdst)
-
-    # with open(, 'wb') as f:
-
-
 @router.post("/upload-file")
 def dev_upload_file(
     form: Annotated[DevUploadFile, Form(media_type="multipart/form-data")]

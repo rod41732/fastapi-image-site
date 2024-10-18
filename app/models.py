@@ -1,6 +1,7 @@
 import datetime
 from typing import Annotated
 from sqlalchemy import ClauseElement
+import sqlmodel
 from typing_extensions import _AnnotatedAlias
 from sqlmodel import Relationship, SQLModel, Field
 from typing import Annotated
@@ -45,8 +46,7 @@ class UserPublic(UserBase):
     id: int
 
 
-class Artwork(UserBase, table=True):
-    id: Annotated[int | None, Field(primary_key=True)] = None
+class ArtworkBase(SQLModel):
     name: str
     description: str
     # path: might be relative or absolute depending on backend
@@ -55,8 +55,17 @@ class Artwork(UserBase, table=True):
     width: int
     height: int
 
+    created_at: datetime.datetime = Field(default_factory=_now)
+    updated_at: datetime.datetime = Field(default_factory=_now)
+
+
+class Artwork(ArtworkBase, table=True):
+    id: Annotated[int | None, Field(primary_key=True)] = None
+
     author_id: Annotated[int | None, Field(index=True, foreign_key="user.id")] = None
     author: User | None = Relationship(back_populates="artworks")
 
-    created_at: datetime.datetime = Field(default_factory=_now)
-    updated_at: datetime.datetime = Field(default_factory=_now)
+
+class ArtworkPublic(ArtworkBase):
+    id: int
+    author: User | None

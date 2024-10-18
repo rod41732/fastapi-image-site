@@ -5,11 +5,10 @@ from sqlalchemy import create_engine
 from sqlmodel import Relationship, SQLModel, Session, Field
 
 
-sqlite_filename = "database.db"
-sqlite_url = f"sqlite:///{sqlite_filename}"
+# sqlite_filename = "database.db"
+db_url = f"postgresql://postgres:postgres@127.0.0.1:5435/image_site"
 
-connect_args = {"check_same_thread": False}
-engine = create_engine(sqlite_url, connect_args=connect_args)
+engine = create_engine(db_url)
 
 
 def create_db_and_tables():
