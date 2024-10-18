@@ -1,5 +1,6 @@
 import datetime
 from typing import Annotated
+from pydantic import BaseModel
 from sqlalchemy import ClauseElement
 import sqlmodel
 from typing_extensions import _AnnotatedAlias
@@ -68,4 +69,9 @@ class Artwork(ArtworkBase, table=True):
 
 class ArtworkPublic(ArtworkBase):
     id: int
-    author: User | None
+    author: UserPublic | None
+
+
+class ArtworkUpdate(BaseModel):
+    name: str
+    description: str

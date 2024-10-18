@@ -67,6 +67,7 @@ def user_email_confirmation(token: str, session: SessionDep):
     user.email_confirmation_token = None
     user.email_confirmed = True
     session.add(user)
+    session.commit()
 
     print("almost return")
     return user
