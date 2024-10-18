@@ -3,6 +3,7 @@ from fastapi import FastAPI
 import os
 import sys
 
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 # important stuff
@@ -22,6 +23,16 @@ app.include_router(user.router, prefix="/user", tags=["user"])
 app.include_router(dev.router, prefix="/_dev", tags=["dev"])
 app.include_router(artworks.router, prefix="/artworks", tags=["artworks"])
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+
+@app.get("/", response_class=RedirectResponse)
+def get_root():
+    return "/index.html"
+
+
+@app.get("/index.html")
+def foo():
+    pass
 
 
 # @app.on_event("startup")

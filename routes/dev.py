@@ -42,8 +42,7 @@ def dev_delete_user(id: int, session: SessionDep):
         .where(
             # NOTE: User.id == id works too, but TS will complain that type is bool
             # this is only typecheck problem in query(...).where()
-            col(User.id)
-            == id
+            col(User.id) == id
         )
         .delete()
     )
@@ -98,7 +97,7 @@ class DevUploadFile(BaseModel):
 
 @router.post("/upload-file")
 def dev_upload_file(
-    form: Annotated[DevUploadFile, Form(media_type="multipart/form-data")]
+    form: Annotated[DevUploadFile, Form(media_type="multipart/form-data")],
     # file: Annotated[UploadFile, File()],
     # images: Annotated[list[UploadFile], File()],
     # name: Annotated[str, Form()],

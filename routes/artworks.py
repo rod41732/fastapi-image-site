@@ -1,6 +1,9 @@
 import os
-from typing import Annotated
-from fastapi import APIRouter, Form, HTTPException, UploadFile
+import time
+from typing import Annotated, Any, Sequence
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
+from fastapi.responses import HTMLResponse
+from markupsafe import Markup
 from pydantic import BaseModel
 import sqlalchemy
 from sqlmodel import col, select
@@ -8,19 +11,19 @@ from app.models import Artwork, ArtworkPublic, ArtworkUpdate
 from constants import UPLOAD_DIR
 from libs.common import ErrorDetail, MessageResponse
 from libs.db import SessionDep
+from libs.html import CSS_RESET
 from libs.upload import save_file
 from libs.dependencies import CurrentUser
 from PIL import Image
 from sqlalchemy.orm import joinedload
 import sqlalchemy.exc
+import htpy as h
 
 
 router = APIRouter()
 
 
-@router.get("/gallery", response_model=list[ArtworkPublic])
-def list_artworks(db: SessionDep):
-    """List all artworks"""
+def _list_artworks_base(db: SessionDep) -> Sequence[Artwork]:
     # TODO: https://docs.sqlalchemy.org/en/20/orm/queryguide/relationships.html
     images = db.exec(
         select(Artwork)
@@ -28,6 +31,51 @@ def list_artworks(db: SessionDep):
         .order_by(col(Artwork.created_at).desc())
     ).all()
     return images
+
+
+@router.get("/gallery", response_model=list[ArtworkPublic])
+def list_artworks(artworks: Annotated[Sequence[Artwork], Depends(_list_artworks_base)]):
+    """List all artworks"""
+    return artworks
+
+
+def _render_artworks(artworks: Sequence[Artwork], *, title="Artworks"):
+    return HTMLResponse(
+        h.html[
+            h.head[CSS_RESET],
+            h.body(style="padding: 16px 32px;")[
+                h.h1[title],
+                h.div(
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));"
+                )[
+                    (
+                        h.div(style="padding: 8px")[
+                            h.img(
+                                src=f"/uploads/{artwork.path}",
+                                style="width: 100%; aspect-ratio: 16/9; object-fit: cover; padding: 2px; border: 2px solid red;",
+                            ),
+                            h.p(style="padding-bottom: 8px; font-weight: bold;")[
+                                artwork.name
+                            ],
+                            h.p[artwork.description],
+                            h.p(style="opacity: 0.75")[
+                                f"{artwork.created_at.strftime("%b %d, %Y")} - {artwork.author and artwork.author.username}"
+                            ],
+                        ]
+                        for artwork in artworks
+                    )
+                ],
+            ],
+        ]
+    )
+
+
+@router.get("/gallery.html", response_class=HTMLResponse)
+def list_artworks_html(
+    artworks: Annotated[Sequence[Artwork], Depends(_list_artworks_base)],
+):
+    """asd"""
+    return _render_artworks(artworks, title="Gallery")
 
 
 class UploadArtworkForm(BaseModel):
@@ -134,9 +182,7 @@ def delete_artwork(
     return MessageResponse(message="Deleted Artwork")
 
 
-@router.get("/mine", response_model=list[ArtworkPublic])
-def list_my_artworks(user: CurrentUser, db: SessionDep):
-    """List all artworks by current user"""
+def _get_user_artworks(db: SessionDep, user: CurrentUser) -> Sequence[Artwork]:
     artworks = db.exec(
         select(Artwork)
         .where(Artwork.author_id == user.id)
@@ -144,3 +190,17 @@ def list_my_artworks(user: CurrentUser, db: SessionDep):
         .order_by(col(Artwork.created_at).desc())
     ).all()
     return artworks
+
+
+@router.get("/mine", response_model=list[ArtworkPublic])
+def list_my_artworks(artworks: Annotated[Any, Depends(_get_user_artworks)]):
+    """List all artworks by current user"""
+    return artworks
+
+
+@router.get("/mine.html", response_model=list[ArtworkPublic])
+def list_my_artworks_html(
+    artworks: Annotated[Any, Depends(_get_user_artworks)], user: CurrentUser
+):
+    """Display all artworks by current user"""
+    return _render_artworks(artworks, title=f"{user.username}: My Artworks")
