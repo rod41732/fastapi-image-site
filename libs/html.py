@@ -1,8 +1,11 @@
+from fastapi.responses import HTMLResponse, RedirectResponse
 from markupsafe import Markup
 import htpy as h
 
+from app.models import User
 
-_css = """
+
+_css_reset = """
 /* Reset for margins and paddings only, preserving all other styles */
 html, body, div, span, applet, object, iframe,
 p, blockquote, pre, a, abbr, acronym, address, big, cite, code,
@@ -45,4 +48,73 @@ a {
   text-decoration: none;
 }
 """
-CSS_RESET = h.style[Markup(_css)]
+_css_base = """
+body > .container {
+    padding: 16px 32px;
+} 
+"""
+
+_css = f"""
+{_css_reset}
+
+{_css_base}
+"""
+CSS_BASE = h.style[Markup(_css)]
+
+
+def page_layout(user: User | None, *, body=None):
+    return h.html[
+        h.head[
+            CSS_BASE,
+            h.script(
+                src="https://unpkg.com/htmx.org@2.0.3",
+                integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq",
+                crossorigin="anonymous",
+            ),
+            h.script(src="https://unpkg.com/htmx-ext-json-enc@2.0.1/json-enc.js"),
+        ],
+        h.body[
+            h.div(style="display: flex; flex-direction: column; height: 100vh;")[
+                h.div(
+                    style="padding: 8px 16px; flex: 0 0 auto; background: #fafafa; display: flex; align-items: center; column-gap: 16px"
+                )[
+                    h.h1["FastAPI Image site"],
+                    h.div(style="flex: 1"),
+                    (
+                        [
+                            h.p[
+                                "Hello! Guest",
+                                h.div[h.a(href="/user/login.html")["Login"],],
+                                h.div[h.a(href="/user/register.html")["Register"],],
+                            ],
+                        ]
+                        if not user
+                        else [
+                            h.p[
+                                "Hello! ",
+                                h.span(style="font-weight: bold")[user.username],
+                            ],
+                            h.form(method="POST", action="/user/logout.html")[
+                                h.button(type="submit")["Logout"]
+                            ],
+                        ]
+                    ),
+                ],
+                h.div(".container", style="flex: 1; overflow-x: auto")[body],
+            ]
+        ],
+    ]
+
+
+def make_redirect_response(url, refresh_duration: int = 2) -> HTMLResponse:
+    return HTMLResponse(
+        content=str(
+            h.div[
+                h.p["Redirecting..."],
+                h.meta(http_equiv="refresh", content=f"{refresh_duration}; url={url}"),
+            ]
+        ),
+        headers={
+            "hx-redirect": url,
+        },
+    )

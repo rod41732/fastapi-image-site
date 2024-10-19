@@ -1,25 +1,27 @@
 import random
-from fastapi import APIRouter, HTTPException, Request
+from typing import Annotated, Any
+from urllib.request import HTTPRedirectHandler
+from xml.dom.domreg import registered
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from markupsafe import Markup
 from pydantic import BaseModel
 import sqlalchemy
 import sqlalchemy.exc
+import htpy as h
 from sqlmodel import select
 
 from app.models import User, UserCreate, UserPublic
 from libs.common import ErrorDetail, MessageResponse
 from libs.db import SessionDep
-from libs.dependencies import CurrentUser
+from libs.dependencies import CurrentUser, CurrentUserOrNone
+from libs.html import make_redirect_response, page_layout
 from libs.password import PasswordValidationError, hash_password, verify_password
 
 router = APIRouter()
 
 
-@router.post(
-    "/register",
-    response_model=UserPublic,
-    responses={400: {"model": ErrorDetail}},
-)
-def register_user(user: UserCreate, session: SessionDep):
+def _register_base(user: UserCreate, session: SessionDep) -> User:
     existing_user = session.exec(
         select(User).where(User.username == user.username)
     ).first()
@@ -56,6 +58,84 @@ def register_user(user: UserCreate, session: SessionDep):
     return db_user
 
 
+@router.post(
+    "/register",
+    response_model=UserPublic,
+    responses={400: {"model": ErrorDetail}},
+)
+def register_user(
+    registered_user: Annotated[User, Depends(_register_base)], request: Request
+):
+    request.session.clear()
+    request.session["user_id"] = registered_user.id
+    request.session["user_username"] = registered_user.username
+    return registered_user
+
+
+@router.get(
+    "/register.html",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+)
+def register_page(user: CurrentUserOrNone):
+    return str(
+        page_layout(
+            user=user,
+            body=[
+                h.div(
+                    style="width: 100%; max-width: 480px; background: #eeeeee; margin: 0 auto; padding: 12px 24px;"
+                )[
+                    h.h1(style="text-align: center")["Register"],
+                    h.style[
+                        Markup(
+                            """
+                        .register-form {
+                            padding: 16px 32px;
+                        }
+
+                        .register-form > * { 
+                            margin: 8px 0;
+                            display: block;
+                        }
+                    """
+                        )
+                    ],
+                    h.form(
+                        ".register-form",
+                        hx_trigger="submit",
+                        hx_target="body",
+                        hx_post="/user/register.html",
+                        hx_ext="json-enc",
+                    )[
+                        h.label["username"],
+                        h.input(name="username"),
+                        h.label["password"],
+                        h.input(name="password", type="password"),
+                        h.label["email"],
+                        h.input(name="email", type="email"),
+                        h.button(type="submit")["Register"],
+                        h.a(href="/user/login.html")["Already have an account? Login"],
+                    ],
+                ]
+            ],
+        )
+    )
+
+
+@router.post(
+    "/register.html",
+    response_class=RedirectResponse,
+    include_in_schema=False,
+)
+def register_form(
+    registered_user: Annotated[User, Depends(_register_base)], request: Request
+):
+    request.session.clear()
+    request.session["user_id"] = registered_user.id
+    request.session["user_username"] = registered_user.username
+    return make_redirect_response("/")
+
+
 @router.get("/email-confirmation", response_model=UserPublic)
 def user_email_confirmation(token: str, session: SessionDep):
     """User email confirmation"""
@@ -78,10 +158,7 @@ class LoginDto(BaseModel):
     password: str
 
 
-@router.post(
-    "/login", responses={401: {"model": ErrorDetail}}, response_model=UserPublic
-)
-def login_user(login: LoginDto, session: SessionDep, request: Request):
+def _login_user(login: LoginDto, session: SessionDep, request: Request) -> User:
     try:
         user = session.exec(select(User).where(User.username == login.username)).one()
         request.session["user_id"] = user.id
@@ -98,14 +175,99 @@ def login_user(login: LoginDto, session: SessionDep, request: Request):
     return user
 
 
-@router.post("/logout")
-def logout_user(request: Request) -> MessageResponse:
+@router.post(
+    "/login", responses={401: {"model": ErrorDetail}}, response_model=UserPublic
+)
+def login_user(logged_in_user: Annotated[Any, Depends(_login_user)]):
+    """Login, return logged in user"""
+    return login_user
+
+
+@router.post(
+    "/login.html",
+    responses={401: {"model": ErrorDetail}},
+    response_model=UserPublic,
+    include_in_schema=False,
+)
+def login_user_form(user: Annotated[User, Depends(_login_user)]):
+    return make_redirect_response("/")
+
+
+@router.get(
+    "/login.html",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+)
+def login_page(user: CurrentUserOrNone):
+    return str(
+        page_layout(
+            user=user,
+            body=[
+                h.div(
+                    style="width: 100%; max-width: 480px; background: #eeeeee; margin: 0 auto; padding: 12px 24px;"
+                )[
+                    h.h1(style="text-align: center")["Login"],
+                    h.style[
+                        Markup(
+                            """
+                        .login-form {
+                            padding: 16px 32px;
+                        }
+
+                        .login-form > * { 
+                            margin: 8px 0;
+                            display: block;
+                        }
+                    """
+                        )
+                    ],
+                    h.form(
+                        ".login-form",
+                        hx_trigger="submit",
+                        hx_post="/user/login.html",
+                        hx_ext="json-enc",
+                    )[
+                        h.label["username"],
+                        h.input(name="username"),
+                        h.label["password"],
+                        h.input(name="password", type="password"),
+                        h.button(type="submit")["Login"],
+                        h.a(href="/user/register.html")[
+                            "Don't have an account? Register"
+                        ],
+                    ],
+                ]
+            ],
+        )
+    )
+
+
+def _logout_base(request: Request) -> MessageResponse:
     session = request.session
     if "user_id" not in session:
         raise HTTPException(status_code=401, detail="Not logged in")
 
     session.clear()
     return MessageResponse(message="Logged out")
+
+
+@router.post("/logout")
+def logout_user(
+    logout_result: Annotated[MessageResponse, Depends(_logout_base)],
+    request: Request,
+) -> MessageResponse:
+    """Logout user"""
+    return logout_result
+
+
+@router.post(
+    "/logout.html",
+    response_class=RedirectResponse,
+    include_in_schema=False,
+)
+def logout_user_html(logout_result: Annotated[MessageResponse, Depends(_logout_base)]):
+    """Logout user"""
+    return make_redirect_response("/")
 
 
 @router.post("/me", response_model=UserPublic)

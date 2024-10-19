@@ -11,7 +11,7 @@ from app.models import Artwork, ArtworkPublic, ArtworkUpdate
 from constants import UPLOAD_DIR
 from libs.common import ErrorDetail, MessageResponse
 from libs.db import SessionDep
-from libs.html import CSS_RESET
+from libs.html import CSS_BASE
 from libs.upload import save_file
 from libs.dependencies import CurrentUser
 from PIL import Image
@@ -42,29 +42,31 @@ def list_artworks(artworks: Annotated[Sequence[Artwork], Depends(_list_artworks_
 def _render_artworks(artworks: Sequence[Artwork], *, title="Artworks"):
     return HTMLResponse(
         h.html[
-            h.head[CSS_RESET],
-            h.body(style="padding: 16px 32px;")[
-                h.h1[title],
-                h.div(
-                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));"
-                )[
-                    (
-                        h.div(style="padding: 8px")[
-                            h.img(
-                                src=f"/uploads/{artwork.path}",
-                                style="width: 100%; aspect-ratio: 16/9; object-fit: cover; padding: 2px; border: 2px solid red;",
-                            ),
-                            h.p(style="padding-bottom: 8px; font-weight: bold;")[
-                                artwork.name
-                            ],
-                            h.p[artwork.description],
-                            h.p(style="opacity: 0.75")[
-                                f"{artwork.created_at.strftime("%b %d, %Y")} - {artwork.author and artwork.author.username}"
-                            ],
-                        ]
-                        for artwork in artworks
-                    )
-                ],
+            h.head[CSS_BASE],
+            h.body()[
+                h.div(".container")[
+                    h.h1[title],
+                    h.div(
+                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));",
+                    )[
+                        (
+                            h.div(style="padding: 8px")[
+                                h.img(
+                                    src=f"/uploads/{artwork.path}",
+                                    style="width: 100%; aspect-ratio: 16/9; object-fit: cover; padding: 2px; border: 2px solid red;",
+                                ),
+                                h.p(style="padding-bottom: 8px; font-weight: bold;")[
+                                    artwork.name
+                                ],
+                                h.p[artwork.description],
+                                h.p(style="opacity: 0.75")[
+                                    f"{artwork.created_at.strftime("%b %d, %Y")} - {artwork.author and artwork.author.username}"
+                                ],
+                            ]
+                            for artwork in artworks
+                        )
+                    ],
+                ]
             ],
         ]
     )

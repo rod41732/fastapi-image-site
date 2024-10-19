@@ -5,8 +5,6 @@ from sqlmodel import col, select
 from app.models import User
 from libs.db import SessionDep
 
-# __all__ = ["get_current_user", "CurrentUser"]
-
 
 def get_current_user(request: Request, db: SessionDep) -> User:
     session = request.session
@@ -22,4 +20,13 @@ def get_current_user(request: Request, db: SessionDep) -> User:
         raise HTTPException(status_code=401, detail="User is deleted")
 
 
+def get_current_user_or_none(request: Request, db: SessionDep) -> User | None:
+    """Return current user, or none if not logged in"""
+    try:
+        return get_current_user(request=request, db=db)
+    except HTTPException:
+        return None
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
+CurrentUserOrNone = Annotated[User | None, Depends(get_current_user_or_none)]
