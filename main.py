@@ -5,14 +5,13 @@ import sys
 cwd = os.path.dirname(__file__)
 sys.path.append(cwd)
 
-import logging
 from fastapi import FastAPI
 
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 
-from libs.html import CSS_BASE, page_layout
+from libs.html import page_layout
 from starlette.middleware.sessions import SessionMiddleware
 from routes import user, dev, artworks
 from libs.dependencies import CurrentUserOrNone

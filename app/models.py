@@ -1,5 +1,6 @@
 import datetime
 from pydoc import doc
+from tokenize import Comment
 from typing import Annotated, Union
 from pydantic import BaseModel
 from sqlalchemy import ClauseElement
@@ -68,10 +69,12 @@ class Artwork(ArtworkBase, table=True):
     author_id: Annotated[int | None, Field(index=True, foreign_key="user.id")] = None
     author: User | None = Relationship(back_populates="artworks")
 
-    comments: list[Union["Comment", None]] = Relationship(back_populates="artwork")
+    comments: list["Comment"] = Relationship(back_populates="artwork")
 
 
 class ArtworkPublic(ArtworkBase):
+    """Public field of 'Artwork' usually returned in listing or as related object"""
+
     id: int
     author: UserPublic | None
 
@@ -101,5 +104,13 @@ class CommentPublic(BaseModel):
     id: int
     text: str
     created_at: datetime.datetime
-    artwork: ArtworkPublic | None  # TODO: returnign this would recusrive too much
+    artwork: ArtworkPublic | None
     author: UserPublic | None
+
+
+class ArtworkDetailed(ArtworkBase):
+    """Detailed Artwork model"""
+
+    id: int
+    author: UserPublic | None
+    comments: list[CommentPublic]

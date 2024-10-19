@@ -75,10 +75,18 @@ def page_layout(user: User | None, *, body=None):
         ],
         h.body[
             h.div(style="display: flex; flex-direction: column; height: 100vh;")[
+                # Top bar
                 h.div(
                     style="padding: 8px 16px; flex: 0 0 auto; background: #fafafa; display: flex; align-items: center; column-gap: 16px"
                 )[
-                    h.h1["FastAPI Image site"],
+                    h.a(style="color: unset", href="/")[h.h1["FastAPI Image site"],],
+                    h.a(style="color: unset", href="/artworks/gallery.html")[
+                        "All Artworks"
+                    ],
+                    user
+                    and h.a(style="color: unset", href="/artworks/mine.html")[
+                        "My Artworks"
+                    ],
                     h.div(style="flex: 1"),
                     (
                         [
@@ -94,12 +102,13 @@ def page_layout(user: User | None, *, body=None):
                                 "Hello! ",
                                 h.span(style="font-weight: bold")[user.username],
                             ],
-                            h.form(method="POST", action="/user/logout.html")[
+                            h.form(hx_post="/user/logout.html")[
                                 h.button(type="submit")["Logout"]
                             ],
                         ]
                     ),
                 ],
+                # container
                 h.div(".container", style="flex: 1; overflow-x: auto")[body],
             ]
         ],

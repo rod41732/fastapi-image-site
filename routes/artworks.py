@@ -1,28 +1,26 @@
-from math import e
 import os
-from shutil import ExecError
-import time
 from typing import Annotated, Any, Sequence
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse
-from markupsafe import Markup
 from pydantic import BaseModel
 import sqlalchemy
 from sqlmodel import col, select
 from app.models import (
     Artwork,
+    ArtworkDetailed,
     ArtworkPublic,
     ArtworkUpdate,
     Comment,
     CommentCreate,
     CommentPublic,
+    User,
 )
 from constants import UPLOAD_DIR
 from libs.common import ErrorDetail, MessageResponse
 from libs.db import SessionDep
-from libs.html import CSS_BASE
+from libs.html import CSS_BASE, page_layout
 from libs.upload import save_file
-from libs.dependencies import CurrentUser
+from libs.dependencies import CurrentUser, CurrentUserOrNone
 from PIL import Image
 from sqlalchemy.orm import joinedload
 import sqlalchemy.exc
@@ -49,21 +47,24 @@ def list_artworks(artworks: Annotated[Sequence[Artwork], Depends(_list_artworks_
 
 
 def _render_artworks(artworks: Sequence[Artwork], *, title="Artworks"):
-    return HTMLResponse(
-        h.html[
-            h.head[CSS_BASE],
-            h.body()[
-                h.div(".container")[
-                    h.h1[title],
-                    h.div(
-                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));",
-                    )[
-                        (
-                            h.div(style="padding: 8px")[
-                                h.img(
-                                    src=f"/uploads/{artwork.path}",
-                                    style="width: 100%; aspect-ratio: 16/9; object-fit: cover; padding: 2px; border: 2px solid red;",
-                                ),
+    return h.html[
+        h.head[CSS_BASE],
+        h.body()[
+            h.div(".container")[
+                h.h1[title],
+                h.div(
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));",
+                )[
+                    (
+                        h.div(style="padding: 8px")[
+                            h.img(
+                                src=f"/uploads/{artwork.path}",
+                                style="width: 100%; aspect-ratio: 16/9; object-fit: cover; padding: 2px; border: 2px solid red;",
+                            ),
+                            h.a(
+                                href=f"/artworks/{artwork.id}.html",
+                                style="color: unset",
+                            )[
                                 h.p(style="padding-bottom: 8px; font-weight: bold;")[
                                     f"{artwork.name} - #{artwork.id}"
                                 ],
@@ -71,22 +72,30 @@ def _render_artworks(artworks: Sequence[Artwork], *, title="Artworks"):
                                 h.p(style="opacity: 0.75")[
                                     f"{artwork.created_at.strftime("%b %d, %Y")} - {artwork.author and artwork.author.username}"
                                 ],
-                            ]
-                            for artwork in artworks
-                        )
-                    ],
-                ]
-            ],
-        ]
-    )
+                            ],
+                        ]
+                        for artwork in artworks
+                    )
+                ],
+            ]
+        ],
+    ]
 
 
 @router.get("/gallery.html", response_class=HTMLResponse)
 def list_artworks_html(
     artworks: Annotated[Sequence[Artwork], Depends(_list_artworks_base)],
+    user: CurrentUserOrNone,
 ):
-    """asd"""
-    return _render_artworks(artworks, title="Gallery")
+    """List artwork HTML page"""
+    return HTMLResponse(
+        page_layout(
+            user=user,
+            body=h.div(style="padding: 16px 24px")[
+                _render_artworks(artworks, title="Gallery")
+            ],
+        )
+    )
 
 
 class UploadArtworkForm(BaseModel):
@@ -214,35 +223,176 @@ def list_my_artworks_html(
     artworks: Annotated[Any, Depends(_get_user_artworks)], user: CurrentUser
 ):
     """Display all artworks by current user"""
-    return _render_artworks(artworks, title=f"{user.username}: My Artworks")
+    return HTMLResponse(
+        page_layout(
+            user=user,
+            body=h.div(style="padding: 16px 24px")[
+                _render_artworks(artworks, title=f"{user.username}: My Artworks")
+            ],
+        )
+    )
 
 
-@router.post("/{artwork_id}/comments", response_model=CommentPublic)
-def comment_on_artwork(
-    artwork_id: int, user: CurrentUser, comment_details: CommentCreate, db: SessionDep
+def _detailed_artwork_base(artwork_id: int, db: SessionDep):
+    try:
+        artwork = (
+            db.exec(
+                select(Artwork)
+                .options(joinedload(Artwork.author), joinedload(Artwork.comments))
+                .where(Artwork.id == artwork_id)
+                # .options(joinedload(Artwork.comments))
+            ).unique()  # must call unique when join with many-to-one
+        ).one()
+        print("-- result", artwork)
+    except sqlalchemy.exc.NoResultFound:
+        raise HTTPException(status_code=404, detail="Artwork not found")
+
+    return artwork
+
+
+def _render_comment(comment: Comment, *, user: User | None):
+    """Render HTML for single comment
+
+    - user: used to determine whether comment is delete-able
+    """
+    return h.div(style="margin: 8px; 16px; background: #e1e1e1; padding: 8px")[
+        h.div(style="font-weight: bold")[comment.author and comment.author.username],
+        h.div[comment.text],
+        h.div(style="opacity: 0.75; font-size: 0.75em;")[
+            comment.created_at.strftime("%b %d, %Y")
+        ],
+        user and comment.author_id == user.id and h.button["delete"],
+    ]
+
+
+@router.get("/{artwork_id}.html", response_class=HTMLResponse, include_in_schema=False)
+def detailed_artwork_page(
+    detailed_artwork: Annotated[Artwork, Depends(_detailed_artwork_base)],
+    artwork_id: int,
+    user: CurrentUserOrNone,
 ):
-    """Create comment on artwork"""
+    author = detailed_artwork.author
+
+    return HTMLResponse(
+        page_layout(
+            user=user,
+            body=[
+                h.div(style="padding: 16px 24px;")[
+                    h.h1[
+                        f"Viewing Artwork {detailed_artwork.name} #{detailed_artwork.id}"
+                    ],
+                    h.img(
+                        src="/uploads/" + detailed_artwork.path,
+                        style="width: 100%; max-width: 768px; aspect-ratio: 16/9; object-fit: cover;",
+                    ),
+                    h.h2[detailed_artwork.name],
+                    h.p(style="font-weight: bold")[
+                        f"posted by {author.username if author else '[deleted user]'} at {detailed_artwork.created_at.strftime('%b %d, %Y')}"
+                    ],
+                    h.p[detailed_artwork.description],
+                    h.hr,
+                    h.h3["Comments"],
+                    user
+                    and [
+                        h.form(
+                            style="margin: 8px; 16px; background: #e1e1e1; padding: 8px",
+                            hx_ext="json-enc",
+                            hx_post=f"/artworks/{artwork_id}/comments.html",
+                            hx_swap="afterend",
+                        )[
+                            h.h4[f"Comment as {user.username}"],
+                            h.textarea(name="text", rows=5, cols=80),
+                            h.br,
+                            h.button(type="submit")["Comment"],
+                        ],
+                    ],
+                    [
+                        _render_comment(comment, user=user)
+                        for comment in sorted(
+                            detailed_artwork.comments,
+                            key=lambda comment: -comment.created_at.timestamp(),
+                        )
+                    ],
+                ]
+            ],
+        )
+    )
+
+
+@router.get("/{artwork_id}", response_model=ArtworkDetailed)
+def get_detailed_artwork(
+    detailed_artwork: Annotated[Artwork, Depends(_detailed_artwork_base)]
+):
+    return detailed_artwork
+
+
+def _comment_on_artwork_base(
+    artwork_id: int, user: CurrentUser, comment_details: CommentCreate, db: SessionDep
+) -> Comment:
+    """Create comment on artwork, returnin created comment"""
     try:
         db.exec(select(Artwork).where(Artwork.id == artwork_id))
     except sqlalchemy.exc.NoResultFound:
         raise HTTPException(status_code=404, detail="Artwork not found")
 
-    new_comment = Comment(
+    created_comment = Comment(
         author_id=user.id,
         artwork_id=artwork_id,
         text=comment_details.text,
     )
-    db.add(new_comment)
+    db.add(created_comment)
     db.commit()
-    return new_comment
+    return created_comment
+
+
+@router.post("/{artwork_id}/comments", response_model=CommentPublic)
+def comment_on_artwork(
+    created_comment: Annotated[Comment, Depends(_comment_on_artwork_base)],
+):
+    """Create comment on artwork"""
+    return created_comment
+
+
+@router.post(
+    "/{artwork_id}/comments.html", response_class=HTMLResponse, include_in_schema=False
+)
+def comment_on_artwork_html(
+    created_comment: Annotated[Comment, Depends(_comment_on_artwork_base)],
+    user: CurrentUser,
+):
+    """Create comment on artwork"""
+    return HTMLResponse(_render_comment(created_comment, user=user))
 
 
 @router.get("/{artwork_id}/comments", response_model=list[CommentPublic])
-def list_artwork_comments(artwork_id: int, _user: CurrentUser, db: SessionDep):
+def list_artwork_comments(artwork_id: int, db: SessionDep):
+    """list comments on artwork"""
     comments = db.exec(
         select(Comment)
         .where(Comment.artwork_id == artwork_id)
-        .options(joinedload(Comment.artwork).joinedload(Artwork.author))
+        .options(
+            joinedload(Comment.artwork).joinedload(Artwork.author),
+            joinedload(Comment.author),
+        )
         .order_by(col(Comment.created_at).desc())
     )
     return comments
+
+
+@router.delete("/i/comments/{comment_id}")
+def delete_artwork_comment(
+    comment_id: int, user: CurrentUser, db: SessionDep
+) -> MessageResponse:
+    """Delete user's comment on artwork"""
+    try:
+        comment = db.exec(select(Comment).where(Comment.id == comment_id)).one()
+    except sqlalchemy.exc.NoResultFound:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    if comment.author_id != user.id:
+        raise HTTPException(status_code=403, detail="Comment not owned by you")
+
+    db.delete(comment)
+    db.commit()
+
+    return MessageResponse(message="Deleted comment")
