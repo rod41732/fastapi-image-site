@@ -1,4 +1,6 @@
+from math import e
 import os
+from shutil import ExecError
 import time
 from typing import Annotated, Any, Sequence
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
@@ -7,7 +9,14 @@ from markupsafe import Markup
 from pydantic import BaseModel
 import sqlalchemy
 from sqlmodel import col, select
-from app.models import Artwork, ArtworkPublic, ArtworkUpdate
+from app.models import (
+    Artwork,
+    ArtworkPublic,
+    ArtworkUpdate,
+    Comment,
+    CommentCreate,
+    CommentPublic,
+)
 from constants import UPLOAD_DIR
 from libs.common import ErrorDetail, MessageResponse
 from libs.db import SessionDep
@@ -56,7 +65,7 @@ def _render_artworks(artworks: Sequence[Artwork], *, title="Artworks"):
                                     style="width: 100%; aspect-ratio: 16/9; object-fit: cover; padding: 2px; border: 2px solid red;",
                                 ),
                                 h.p(style="padding-bottom: 8px; font-weight: bold;")[
-                                    artwork.name
+                                    f"{artwork.name} - #{artwork.id}"
                                 ],
                                 h.p[artwork.description],
                                 h.p(style="opacity: 0.75")[
@@ -200,9 +209,40 @@ def list_my_artworks(artworks: Annotated[Any, Depends(_get_user_artworks)]):
     return artworks
 
 
-@router.get("/mine.html", response_model=list[ArtworkPublic])
+@router.get("/mine.html", response_class=HTMLResponse, include_in_schema=False)
 def list_my_artworks_html(
     artworks: Annotated[Any, Depends(_get_user_artworks)], user: CurrentUser
 ):
     """Display all artworks by current user"""
     return _render_artworks(artworks, title=f"{user.username}: My Artworks")
+
+
+@router.post("/{artwork_id}/comments", response_model=CommentPublic)
+def comment_on_artwork(
+    artwork_id: int, user: CurrentUser, comment_details: CommentCreate, db: SessionDep
+):
+    """Create comment on artwork"""
+    try:
+        db.exec(select(Artwork).where(Artwork.id == artwork_id))
+    except sqlalchemy.exc.NoResultFound:
+        raise HTTPException(status_code=404, detail="Artwork not found")
+
+    new_comment = Comment(
+        author_id=user.id,
+        artwork_id=artwork_id,
+        text=comment_details.text,
+    )
+    db.add(new_comment)
+    db.commit()
+    return new_comment
+
+
+@router.get("/{artwork_id}/comments", response_model=list[CommentPublic])
+def list_artwork_comments(artwork_id: int, _user: CurrentUser, db: SessionDep):
+    comments = db.exec(
+        select(Comment)
+        .where(Comment.artwork_id == artwork_id)
+        .options(joinedload(Comment.artwork).joinedload(Artwork.author))
+        .order_by(col(Comment.created_at).desc())
+    )
+    return comments

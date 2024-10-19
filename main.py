@@ -42,13 +42,20 @@ def main_page(user: CurrentUserOrNone):
             body=[
                 h.div(style="padding: 16px 24px;")[
                     h.h1["Welcome to the site"],
-                    h.div[
-                        "Login -> ",
-                        h.a(href="/users/login.html")["Login"],
+                    user is None
+                    and [
+                        h.div[
+                            "Login -> ",
+                            h.a(href="/users/login.html")["Login"],
+                        ],
+                        h.div[
+                            "Register -> ",
+                            h.a(href="/users/register.html")["Register"],
+                        ],
                     ],
                     h.div[
-                        "Register -> ",
-                        h.a(href="/users/register.html")["Register"],
+                        "Gallery -> ",
+                        h.a(href="/artworks/gallery.html")["Gallery"],
                     ],
                 ]
                 # [

@@ -1,9 +1,7 @@
 import random
 from typing import Annotated, Any
-from urllib.request import HTTPRedirectHandler
-from xml.dom.domreg import registered
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from markupsafe import Markup
 from pydantic import BaseModel
 import sqlalchemy
@@ -124,7 +122,7 @@ def register_page(user: CurrentUserOrNone):
 
 @router.post(
     "/register.html",
-    response_class=RedirectResponse,
+    response_class=HTMLResponse,
     include_in_schema=False,
 )
 def register_form(
@@ -186,7 +184,7 @@ def login_user(logged_in_user: Annotated[Any, Depends(_login_user)]):
 @router.post(
     "/login.html",
     responses={401: {"model": ErrorDetail}},
-    response_model=UserPublic,
+    response_class=HTMLResponse,
     include_in_schema=False,
 )
 def login_user_form(user: Annotated[User, Depends(_login_user)]):
@@ -262,7 +260,7 @@ def logout_user(
 
 @router.post(
     "/logout.html",
-    response_class=RedirectResponse,
+    response_class=HTMLResponse,
     include_in_schema=False,
 )
 def logout_user_html(logout_result: Annotated[MessageResponse, Depends(_logout_base)]):

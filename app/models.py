@@ -1,5 +1,6 @@
 import datetime
-from typing import Annotated
+from pydoc import doc
+from typing import Annotated, Union
 from pydantic import BaseModel
 from sqlalchemy import ClauseElement
 import sqlmodel
@@ -30,6 +31,7 @@ class User(UserBase, table=True):
     email_confirmed: Annotated[bool, Field()] = False
 
     artworks: list["Artwork"] = Relationship(back_populates="author")
+    comments: list[Union["Comment", None]] = Relationship(back_populates="author")
 
     created_at: datetime.datetime = Field(default_factory=_now)
     updated_at: datetime.datetime = Field(default_factory=_now)
@@ -66,6 +68,8 @@ class Artwork(ArtworkBase, table=True):
     author_id: Annotated[int | None, Field(index=True, foreign_key="user.id")] = None
     author: User | None = Relationship(back_populates="artworks")
 
+    comments: list[Union["Comment", None]] = Relationship(back_populates="artwork")
+
 
 class ArtworkPublic(ArtworkBase):
     id: int
@@ -75,3 +79,27 @@ class ArtworkPublic(ArtworkBase):
 class ArtworkUpdate(BaseModel):
     name: str
     description: str
+
+
+class Comment(SQLModel, table=True):
+    id: Annotated[int | None, Field(primary_key=True)] = None
+    text: Annotated[str, Field()]
+    created_at: datetime.datetime = Field(default_factory=_now)
+
+    artwork_id: Annotated[int | None, Field(foreign_key="artwork.id")] = None
+    artwork: Artwork | None = Relationship(back_populates="comments")
+
+    author_id: Annotated[int | None, Field(foreign_key="user.id")] = None
+    author: User | None = Relationship(back_populates="comments")
+
+
+class CommentCreate(BaseModel):
+    text: Annotated[str, Field()]
+
+
+class CommentPublic(BaseModel):
+    id: int
+    text: str
+    created_at: datetime.datetime
+    artwork: ArtworkPublic | None  # TODO: returnign this would recusrive too much
+    author: UserPublic | None
