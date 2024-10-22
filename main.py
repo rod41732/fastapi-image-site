@@ -33,7 +33,7 @@ def get_root():
     return "/index.html"
 
 
-@app.get("/index.html", response_class=HTMLResponse)
+@app.get("/index.html", response_class=HTMLResponse, include_in_schema=False)
 def main_page(user: CurrentUserOrNone):
     return str(
         page_layout(

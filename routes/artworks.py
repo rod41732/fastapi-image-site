@@ -82,7 +82,7 @@ def _render_artworks(artworks: Sequence[Artwork], *, title="Artworks"):
     ]
 
 
-@router.get("/gallery.html", response_class=HTMLResponse)
+@router.get("/gallery.html", response_class=HTMLResponse, include_in_schema=False)
 def list_artworks_html(
     artworks: Annotated[Sequence[Artwork], Depends(_list_artworks_base)],
     user: CurrentUserOrNone,
