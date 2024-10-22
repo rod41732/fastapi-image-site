@@ -299,6 +299,7 @@ def detailed_artwork_page(
                             hx_ext="json-enc",
                             hx_post=f"/artworks/{artwork_id}/comments.html",
                             hx_swap="afterend",
+                            hx_disabled_elt="find button",
                         )[
                             h.h4[f"Comment as {user.username}"],
                             h.textarea(name="text", rows=5, cols=80),
