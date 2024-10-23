@@ -46,37 +46,60 @@ def list_artworks(artworks: Annotated[Sequence[Artwork], Depends(_list_artworks_
     return artworks
 
 
-def _render_artworks(artworks: Sequence[Artwork], *, title="Artworks"):
+def _render_artwork(artwork: Artwork):
+    return h.div(style="padding: 8px")[
+        h.img(
+            src=f"/uploads/{artwork.path}",
+            style="width: 100%; aspect-ratio: 16/9; object-fit: cover; padding: 2px; border: 2px solid red;",
+        ),
+        h.a(
+            href=f"/artworks/{artwork.id}.html",
+            style="color: unset",
+        )[
+            h.p(style="padding-bottom: 8px; font-weight: bold;")[
+                f"{artwork.name} - #{artwork.id}"
+            ],
+            h.p[artwork.description],
+            h.p(style="opacity: 0.75")[
+                f"{artwork.created_at.strftime("%b %d, %Y")} - {artwork.author and artwork.author.username}"
+            ],
+        ],
+    ]
+
+
+def _render_artworks(
+    artworks: Sequence[Artwork], *, title="Artworks", show_upload: bool = False
+):
     return h.html[
         h.head[CSS_BASE],
         h.body()[
             h.div(".container")[
                 h.h1[title],
+                show_upload
+                and h.details[
+                    h.summary["Upload new artwork"],
+                    h.form(
+                        hx_post="/artworks/upload.html",
+                        method="post",
+                        hx_swap="afterbegin",
+                        hx_target="#artwork-grid",
+                        enctype="multipart/form-data",
+                    )[
+                        h.label["Name"],
+                        h.input(name="name"),
+                        h.br,
+                        h.label["Description"],
+                        h.input(name="description"),
+                        h.br,
+                        h.input(type="file", name="image"),
+                        h.br,
+                        h.button(type="submit")["Upload"],
+                    ],
+                ],
                 h.div(
                     style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));",
-                )[
-                    (
-                        h.div(style="padding: 8px")[
-                            h.img(
-                                src=f"/uploads/{artwork.path}",
-                                style="width: 100%; aspect-ratio: 16/9; object-fit: cover; padding: 2px; border: 2px solid red;",
-                            ),
-                            h.a(
-                                href=f"/artworks/{artwork.id}.html",
-                                style="color: unset",
-                            )[
-                                h.p(style="padding-bottom: 8px; font-weight: bold;")[
-                                    f"{artwork.name} - #{artwork.id}"
-                                ],
-                                h.p[artwork.description],
-                                h.p(style="opacity: 0.75")[
-                                    f"{artwork.created_at.strftime("%b %d, %Y")} - {artwork.author and artwork.author.username}"
-                                ],
-                            ],
-                        ]
-                        for artwork in artworks
-                    )
-                ],
+                    id="artwork-grid",
+                )[(_render_artwork(artwork) for artwork in artworks)],
             ]
         ],
     ]
@@ -104,13 +127,12 @@ class UploadArtworkForm(BaseModel):
     image: UploadFile
 
 
-@router.post("/upload", response_model=ArtworkPublic)
-def upload_artwork(
+def _upload_artwork_base(
     form: Annotated[UploadArtworkForm, Form(media_type="multipart/form-data")],
     user: CurrentUser,
     db: SessionDep,
-):
-    """Upload a new artwork"""
+) -> Artwork:
+    """Upload a new artwork, return created artwork"""
     content_type = form.image.content_type
     if not content_type or not content_type.startswith("image"):
         raise HTTPException(status_code=400, detail="Expected image")
@@ -148,6 +170,20 @@ def upload_artwork(
     db.refresh(artwork)
 
     return artwork
+
+
+@router.post("/upload", response_model=ArtworkPublic)
+def upload_artwork(created_artwork: Annotated[Artwork, Depends(_upload_artwork_base)]):
+    """Upload a new artwork, return created artwork"""
+    return created_artwork
+
+
+@router.post("/upload.html", response_class=HTMLResponse, include_in_schema=False)
+def upload_artwork_html(
+    created_artwork: Annotated[Artwork, Depends(_upload_artwork_base)]
+):
+    """Upload a new artwork, return created artwork"""
+    return str(_render_artwork(created_artwork))
 
 
 @router.put(
@@ -227,7 +263,9 @@ def list_my_artworks_html(
         page_layout(
             user=user,
             body=h.div(style="padding: 16px 24px")[
-                _render_artworks(artworks, title=f"{user.username}: My Artworks")
+                _render_artworks(
+                    artworks, title=f"{user.username}: My Artworks", show_upload=True
+                )
             ],
         )
     )
