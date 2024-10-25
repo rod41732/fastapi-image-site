@@ -48,14 +48,14 @@ def list_artworks(artworks: Annotated[Sequence[Artwork], Depends(_list_artworks_
 
 def _render_artwork(artwork: Artwork):
     return h.div(style="padding: 8px")[
-        h.img(
-            src=f"/uploads/{artwork.path}",
-            style="width: 100%; aspect-ratio: 16/9; object-fit: cover; padding: 2px; border: 2px solid red;",
-        ),
         h.a(
             href=f"/artworks/{artwork.id}.html",
             style="color: unset",
         )[
+            h.img(
+                src=f"/uploads/{artwork.path}",
+                style="width: 100%; aspect-ratio: 16/9; object-fit: cover; padding: 2px; border: 2px solid red;",
+            ),
             h.p(style="padding-bottom: 8px; font-weight: bold;")[
                 f"{artwork.name} - #{artwork.id}"
             ],
@@ -76,28 +76,31 @@ def _render_artworks(
             h.div(".container")[
                 h.h1[title],
                 show_upload
-                and h.details[
+                and h.details(style="margin-bottom: 16px")[
                     h.summary["Upload new artwork"],
-                    h.form(
-                        hx_post="/artworks/upload.html",
-                        method="post",
-                        hx_swap="afterbegin",
-                        hx_target="#artwork-grid",
-                        enctype="multipart/form-data",
-                    )[
-                        h.label["Name"],
-                        h.input(name="name"),
-                        h.br,
-                        h.label["Description"],
-                        h.input(name="description"),
-                        h.br,
-                        h.input(type="file", name="image"),
-                        h.br,
-                        h.button(type="submit")["Upload"],
+                    h.div(style="padding: 8px 12px; background: #e1e1e1;")[
+                        h.form(
+                            hx_on_htmx_after_request="if (event.detail.successful) this.reset(); else alert('Upload failed')",
+                            hx_post="/artworks/upload.html",
+                            method="post",
+                            hx_swap="afterbegin",
+                            hx_target="#artwork-grid",
+                            enctype="multipart/form-data",
+                        )[
+                            h.label["Name"],
+                            h.input(name="name"),
+                            h.br,
+                            h.label["Description"],
+                            h.input(name="description"),
+                            h.br,
+                            h.input(type="file", name="image"),
+                            h.br,
+                            h.button(type="submit")["Upload"],
+                        ],
                     ],
                 ],
                 h.div(
-                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));",
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))",
                     id="artwork-grid",
                 )[(_render_artwork(artwork) for artwork in artworks)],
             ]
@@ -293,13 +296,23 @@ def _render_comment(comment: Comment, *, user: User | None):
 
     - user: used to determine whether comment is delete-able
     """
-    return h.div(style="margin: 8px; 16px; background: #e1e1e1; padding: 8px")[
+    return h.div(
+        style="margin: 8px; 16px; background: #e1e1e1; padding: 8px",
+        class_="artwork-comment",
+    )[
         h.div(style="font-weight: bold")[comment.author and comment.author.username],
         h.div[comment.text],
         h.div(style="opacity: 0.75; font-size: 0.75em;")[
             comment.created_at.strftime("%b %d, %Y")
         ],
-        user and comment.author_id == user.id and h.button["delete"],
+        user
+        and comment.author_id == user.id
+        and h.button(
+            hx_delete=f"/artworks/i/comments/{comment.id}",
+            hx_swap="delete",
+            hx_target="closest .artwork-comment",
+            hx_confirm="Delete this comment?",
+        )["delete"],
     ]
 
 
@@ -338,9 +351,14 @@ def detailed_artwork_page(
                             hx_post=f"/artworks/{artwork_id}/comments.html",
                             hx_swap="afterend",
                             hx_disabled_elt="find button",
+                            hx_on_htmx_after_request="if (event.detail.successful) this.reset(); else alert('Comment failed')",
                         )[
                             h.h4[f"Comment as {user.username}"],
-                            h.textarea(name="text", rows=5, cols=80),
+                            h.textarea(
+                                name="text",
+                                rows=5,
+                                style="width: 100%; max-width: 768px;",
+                            ),
                             h.br,
                             h.button(type="submit")["Comment"],
                         ],
