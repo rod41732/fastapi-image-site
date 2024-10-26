@@ -46,8 +46,9 @@ def list_artworks(artworks: Annotated[Sequence[Artwork], Depends(_list_artworks_
     return artworks
 
 
-def _render_artwork(artwork: Artwork):
-    return h.div(style="padding: 8px")[
+def _render_artwork(artwork: Artwork, *, extra_classes: list[str] | None = None):
+    class_ = " ".join(["artwork"] + (extra_classes or []))
+    return h.div(class_=class_)[
         h.a(
             href=f"/artworks/{artwork.id}.html",
             style="color: unset",
@@ -83,19 +84,24 @@ def _render_artworks(
                             hx_on_htmx_after_request="if (event.detail.successful) this.reset(); else alert('Upload failed')",
                             hx_post="/artworks/upload.html",
                             method="post",
+                            class_="upload-artwork-form",
                             hx_swap="afterbegin",
                             hx_target="#artwork-grid",
                             enctype="multipart/form-data",
                         )[
-                            h.label["Name"],
-                            h.input(name="name"),
-                            h.br,
-                            h.label["Description"],
-                            h.input(name="description"),
-                            h.br,
-                            h.input(type="file", name="image"),
-                            h.br,
-                            h.button(type="submit")["Upload"],
+                            h.p[
+                                h.label["Image",],
+                                h.input(type="file", name="image", accept="image/*"),
+                            ],
+                            h.p[
+                                h.label["Name"],
+                                h.input(name="name"),
+                            ],
+                            h.p[
+                                h.label["Description"],
+                                h.input(name="description"),
+                            ],
+                            h.p[h.button(type="submit")["Upload"],],
                         ],
                     ],
                 ],
@@ -183,10 +189,10 @@ def upload_artwork(created_artwork: Annotated[Artwork, Depends(_upload_artwork_b
 
 @router.post("/upload.html", response_class=HTMLResponse, include_in_schema=False)
 def upload_artwork_html(
-    created_artwork: Annotated[Artwork, Depends(_upload_artwork_base)]
+    created_artwork: Annotated[Artwork, Depends(_upload_artwork_base)],
 ):
     """Upload a new artwork, return created artwork"""
-    return str(_render_artwork(created_artwork))
+    return str(_render_artwork(created_artwork, extra_classes=["new"]))
 
 
 @router.put(
@@ -297,7 +303,7 @@ def _render_comment(comment: Comment, *, user: User | None):
     - user: used to determine whether comment is delete-able
     """
     return h.div(
-        style="margin: 8px; 16px; background: #e1e1e1; padding: 8px",
+        style="",
         class_="artwork-comment",
     )[
         h.div(style="font-weight: bold")[comment.author and comment.author.username],
@@ -309,7 +315,7 @@ def _render_comment(comment: Comment, *, user: User | None):
         and comment.author_id == user.id
         and h.button(
             hx_delete=f"/artworks/i/comments/{comment.id}",
-            hx_swap="delete",
+            hx_swap="delete swap:1s",
             hx_target="closest .artwork-comment",
             hx_confirm="Delete this comment?",
         )["delete"],
@@ -378,7 +384,7 @@ def detailed_artwork_page(
 
 @router.get("/{artwork_id}", response_model=ArtworkDetailed)
 def get_detailed_artwork(
-    detailed_artwork: Annotated[Artwork, Depends(_detailed_artwork_base)]
+    detailed_artwork: Annotated[Artwork, Depends(_detailed_artwork_base)],
 ):
     return detailed_artwork
 

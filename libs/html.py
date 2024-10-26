@@ -1,4 +1,4 @@
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from markupsafe import Markup
 import htpy as h
 
@@ -16,6 +16,10 @@ embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, sect
 summary, time, mark, audio, video {
   margin: 0;
   padding: 0;
+}
+
+*, *:before, *:after {
+  box-sizing: border-box;
 }
 
 body {
@@ -52,6 +56,37 @@ _css_base = """
 body > .container {
     padding: 16px 32px;
 } 
+
+.artwork-comment {
+    margin: 8px; 16px; background: #e1e1e1; padding: 8px;
+}
+
+.artwork-comment.htmx-swapping {
+    background: lightpink;
+}
+
+.artwork.new {
+    background-color: lightgreen;
+}
+
+.artwork.htmx-added {
+    background-color: limegreen;
+}
+
+
+.artwork {
+    padding: 8px;
+    transition: background-color 1s ease-out;
+}
+
+.upload-artwork-form > p {
+    margin: 8px 0px;
+}
+
+.upload-artwork-form > p > label {
+    padding-right: 2em;
+}
+
 """
 
 _css = f"""

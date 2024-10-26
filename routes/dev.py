@@ -1,9 +1,5 @@
 import datetime
-import logging
-import mimetypes
-import shutil
 from typing import Annotated
-import uuid
 from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from pydantic import BaseModel
 from sqlmodel import SQLModel, col, select
@@ -12,6 +8,8 @@ from app.models import User
 from constants import UPLOAD_DIR
 from libs.db import create_db_and_tables, SessionDep
 import os
+
+from libs.upload import save_file
 
 router = APIRouter()
 

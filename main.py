@@ -2,8 +2,7 @@
 import os
 import sys
 
-cwd = os.path.dirname(__file__)
-sys.path.append(cwd)
+sys.path.append(os.path.dirname(__file__))
 
 from fastapi import FastAPI
 

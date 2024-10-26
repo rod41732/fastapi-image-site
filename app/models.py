@@ -1,20 +1,18 @@
 import datetime
-from pydoc import doc
-from tokenize import Comment
 from typing import Annotated, Union
 from pydantic import BaseModel
-from sqlalchemy import ClauseElement
-import sqlmodel
-from typing_extensions import _AnnotatedAlias
 from sqlmodel import Relationship, SQLModel, Field
-from typing import Annotated
-from sqlmodel import SQLModel
 
 
 def _now():
     return datetime.datetime.fromtimestamp(
         datetime.datetime.now().timestamp(), datetime.UTC
     )
+
+
+class UserLikeArtwork(SQLModel, table=True):
+    user_id: Annotated[int, Field(foreign_key="user.id", primary_key=True)]
+    artwork_id: Annotated[int, Field(foreign_key="artwork.id", primary_key=True)]
 
 
 class UserBase(SQLModel):
@@ -33,6 +31,9 @@ class User(UserBase, table=True):
 
     artworks: list["Artwork"] = Relationship(back_populates="author")
     comments: list[Union["Comment", None]] = Relationship(back_populates="author")
+    liked_artworks: list["Artwork"] = Relationship(
+        back_populates="liking_users", link_model=UserLikeArtwork
+    )
 
     created_at: datetime.datetime = Field(default_factory=_now)
     updated_at: datetime.datetime = Field(default_factory=_now)
@@ -68,6 +69,9 @@ class Artwork(ArtworkBase, table=True):
 
     author_id: Annotated[int | None, Field(index=True, foreign_key="user.id")] = None
     author: User | None = Relationship(back_populates="artworks")
+    liking_users: list["User"] = Relationship(
+        back_populates="liked_artworks", link_model=UserLikeArtwork
+    )
 
     comments: list["Comment"] = Relationship(back_populates="artwork")
 
