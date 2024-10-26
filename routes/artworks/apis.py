@@ -20,6 +20,7 @@ from libs.dependencies import CurrentUser, CurrentUserOrNone
 from sqlalchemy.orm import joinedload
 import sqlalchemy.exc
 import htpy as h
+from .view import _render_artworks
 
 
 def mount_apis(router: APIRouter):
@@ -285,3 +286,13 @@ def mount_apis(router: APIRouter):
         db.commit()
 
         return MessageResponse(message="Deleted comment")
+
+    @router.post("/{artwork_id}/favorite")
+    def like_artwork(user: CurrentUser, artwork_id: int):
+        """Favorite specified artwork"""
+        # favorite =
+
+    @router.delete("/{artwork_id}/like")
+    def unlike_artwork(user: CurrentUser, artwork_id: int):
+        """Unfavorite specified artwork"""
+        pass

@@ -1,30 +1,18 @@
 import os
-from typing import Annotated, Any, Sequence
+from typing import Annotated
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-import sqlalchemy
-from sqlmodel import col, select
 from app.models import (
     Artwork,
-    ArtworkDetailed,
     ArtworkPublic,
-    ArtworkUpdate,
-    Comment,
-    CommentCreate,
-    CommentPublic,
-    User,
 )
 from constants import UPLOAD_DIR
-from libs.common import ErrorDetail, MessageResponse
 from libs.db import SessionDep
-from libs.html import CSS_BASE, page_layout
 from libs.upload import save_file
-from libs.dependencies import CurrentUser, CurrentUserOrNone
+from libs.dependencies import CurrentUser
 from PIL import Image
-from sqlalchemy.orm import joinedload
-import sqlalchemy.exc
-import htpy as h
+from .view import _render_artwork
 
 
 class UploadArtworkForm(BaseModel):

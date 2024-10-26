@@ -10,9 +10,10 @@ def _now():
     )
 
 
-class UserLikeArtwork(SQLModel, table=True):
+class UserFavoriteArtwork(SQLModel, table=True):
     user_id: Annotated[int, Field(foreign_key="user.id", primary_key=True)]
     artwork_id: Annotated[int, Field(foreign_key="artwork.id", primary_key=True)]
+    favorited_at: datetime.datetime = Field(default_factory=_now)
 
 
 class UserBase(SQLModel):
@@ -31,8 +32,8 @@ class User(UserBase, table=True):
 
     artworks: list["Artwork"] = Relationship(back_populates="author")
     comments: list[Union["Comment", None]] = Relationship(back_populates="author")
-    liked_artworks: list["Artwork"] = Relationship(
-        back_populates="liking_users", link_model=UserLikeArtwork
+    favorite_artworks: list["Artwork"] = Relationship(
+        back_populates="favoriting_users", link_model=UserFavoriteArtwork
     )
 
     created_at: datetime.datetime = Field(default_factory=_now)
@@ -69,8 +70,8 @@ class Artwork(ArtworkBase, table=True):
 
     author_id: Annotated[int | None, Field(index=True, foreign_key="user.id")] = None
     author: User | None = Relationship(back_populates="artworks")
-    liking_users: list["User"] = Relationship(
-        back_populates="liked_artworks", link_model=UserLikeArtwork
+    favoriting_users: list["User"] = Relationship(
+        back_populates="favorite_artworks", link_model=UserFavoriteArtwork
     )
 
     comments: list["Comment"] = Relationship(back_populates="artwork")
