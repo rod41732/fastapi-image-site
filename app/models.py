@@ -12,8 +12,16 @@ def _now():
 
 class UserFavoriteArtwork(SQLModel, table=True):
     user_id: Annotated[int, Field(foreign_key="user.id", primary_key=True)]
+    user: "User" = Relationship()
     artwork_id: Annotated[int, Field(foreign_key="artwork.id", primary_key=True)]
+    artwork: "Artwork" = Relationship()
     favorited_at: datetime.datetime = Field(default_factory=_now)
+
+
+class UserFavoriteArtworkPublic(BaseModel):
+    user: "UserPublic"
+    artwork: "ArtworkPublic"
+    favorited_at: datetime.datetime
 
 
 class UserBase(SQLModel):

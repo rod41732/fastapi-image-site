@@ -12,6 +12,8 @@ from app.models import (
     CommentCreate,
     CommentPublic,
     User,
+    UserFavoriteArtwork,
+    UserFavoriteArtworkPublic,
 )
 from libs.common import ErrorDetail, MessageResponse
 from libs.db import SessionDep
@@ -24,6 +26,22 @@ from .view import _render_artworks
 
 
 def mount_apis(router: APIRouter):
+    @router.get("/favorites", response_model=list[ArtworkPublic])
+    def list_favorite_artworks(user: CurrentUser, db: SessionDep):
+        """List favorited artworks, ordered by time"""
+        favorites = db.exec(
+            select(UserFavoriteArtwork)
+            .options(
+                joinedload(UserFavoriteArtwork.artwork).joinedload(Artwork.author),
+            )
+            .where(
+                UserFavoriteArtwork.user_id == user.id,
+            )
+            .order_by(col(UserFavoriteArtwork.favorited_at).desc())
+        )
+        favorited_artworks = [favorite.artwork for favorite in favorites]
+        return favorited_artworks
+
     @router.put(
         "/{artwork_id}",
         response_model=ArtworkPublic,
@@ -287,12 +305,51 @@ def mount_apis(router: APIRouter):
 
         return MessageResponse(message="Deleted comment")
 
-    @router.post("/{artwork_id}/favorite")
-    def like_artwork(user: CurrentUser, artwork_id: int):
+    @router.post("/{artwork_id}/favorite", response_model=UserFavoriteArtworkPublic)
+    def favorite_artwork(user: CurrentUser, artwork_id: int, db: SessionDep):
         """Favorite specified artwork"""
-        # favorite =
+        artwork_exist = db.query(
+            select(Artwork).where(Artwork.id == artwork_id).exists()
+        ).scalar()
+        if not artwork_exist:
+            raise HTTPException(
+                status_code=404, detail=f"Artwork {artwork_id} does not exist"
+            )
 
-    @router.delete("/{artwork_id}/like")
-    def unlike_artwork(user: CurrentUser, artwork_id: int):
+        favorite = UserFavoriteArtwork(user_id=user.id, artwork_id=artwork_id)  # type: ignore
+        try:
+            db.add(favorite)
+            db.commit()
+        except sqlalchemy.exc.IntegrityError:
+            raise HTTPException(
+                status_code=409, detail=f"Artwork {artwork_id} already favorited"
+            )
+        return favorite
+
+    @router.delete("/{artwork_id}/favorite", response_model=UserFavoriteArtworkPublic)
+    def unfavorite_artwork(user: CurrentUser, artwork_id: int, db: SessionDep):
         """Unfavorite specified artwork"""
-        pass
+        try:
+            favorite = db.exec(
+                select(UserFavoriteArtwork).where(
+                    UserFavoriteArtwork.artwork_id == artwork_id,
+                    UserFavoriteArtwork.user_id == user.id,
+                )
+            ).one()
+        except sqlalchemy.exc.NoResultFound:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Artwork {artwork_id} is not favorited or does not exist",
+            )
+
+        delete_count = (
+            db.query(UserFavoriteArtwork)
+            .where(
+                col(UserFavoriteArtwork.artwork_id) == artwork_id,
+                col(UserFavoriteArtwork.user_id) == user.id,
+            )
+            .delete()
+        )
+        assert delete_count == 1
+
+        return favorite
