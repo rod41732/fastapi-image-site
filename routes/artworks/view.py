@@ -16,12 +16,23 @@ def _render_artwork(artwork: Artwork, *, extra_classes: list[str] | None = None)
                 src=f"/uploads/{artwork.path}",
                 style="width: 100%; aspect-ratio: 16/9; object-fit: cover; padding: 2px; border: 2px solid red;",
             ),
-            h.p(style="padding-bottom: 8px; font-weight: bold;")[
-                f"{artwork.name} - #{artwork.id}"
-            ],
-            h.p[artwork.description],
-            h.p(style="opacity: 0.75")[
-                f"{artwork.created_at.strftime("%b %d, %Y")} - {artwork.author and artwork.author.username}"
+        ],
+        h.p(style="padding-bottom: 8px; font-weight: bold;")[
+            h.a(
+                href=f"/artworks/{artwork.id}.html",
+                style="color: unset;",
+            )[f"{artwork.name} - #{artwork.id}"]
+        ],
+        h.p[artwork.description],
+        h.p(style="opacity: 0.75")[
+            f"{artwork.created_at.strftime("%b %d, %Y")}",
+            artwork.author
+            and [
+                h.span[" - "],
+                h.a(
+                    href=f"/user/{artwork.author.id}.html",
+                    style="font-weight: bold; color: unset;",
+                )[artwork.author.username],
             ],
         ],
     ]

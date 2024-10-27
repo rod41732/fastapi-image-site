@@ -68,7 +68,7 @@ def mount_apis(router: APIRouter):
 
     @router.post("/upload", response_model=ArtworkPublic)
     def upload_artwork(
-        created_artwork: Annotated[Artwork, Depends(_upload_artwork_base)]
+        created_artwork: Annotated[Artwork, Depends(_upload_artwork_base)],
     ):
         """Upload a new artwork, return created artwork"""
         return created_artwork

@@ -1,3 +1,4 @@
+import json
 import random
 from typing import Annotated, Any, Sequence
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -292,21 +293,37 @@ def _get_user_by_id_base(user_id: int, db: SessionDep):
 
 @router.get("/{user_id}.html", response_class=HTMLResponse, include_in_schema=False)
 def user_profile_page(
+    *,
     user: Annotated[User, Depends(_get_user_by_id_base)],
     current_user: CurrentUserOrNone,
     user_id: int,
     tab: str = "artworks",
-    # db: SessionDep,
+    db: SessionDep,
 ):
-    sub_url = f"/user/{user_id}/" + (
-        "artworks.phtml" if tab == "artworks" else "favorite-artworks.phtml"
-    )
+    sub_page = None
+    if tab == "artworks":
+        sub_page = h.render_node(
+            [
+                _render_artworks(_list_user_artworks_base(user_id=user_id, db=db)),
+            ]
+        )
+    elif tab == "favorites":
+        sub_page = _render_artworks(
+            _list_user_favorite_artworks_base(user_id=user_id, db=db)
+        )
+
+    initial_state = json.dumps({"tab": tab})
 
     return HTMLResponse(
         page_layout(
             user=current_user,
-            body=h.div(style="padding: 16px 24px")[
-                h.h1[f"{user.username}'s Profile"],
+            body=h.div(
+                style="padding: 16px 24px", id="profile-app", x_data=initial_state
+            )[
+                h.div(style="margin-bottom: 8px")[
+                    h.h1[f"{user.username}'s Profile"],
+                    h.p[f"User ID: #{user.id}"],
+                ],
                 h.style[
                     Markup(
                         """
@@ -331,19 +348,28 @@ def user_profile_page(
                 ],
                 h.p(class_="profile-header", hx_boost="true")[
                     h.a(
-                        href=f"/user/{user_id}.html?tab=artworks",
-                        class_={"active": tab == "artworks"},
+                        {
+                            "x-bind:class": 'tab == "artworks" ? "active": ""',
+                            "x-on:htmx:after-request": "if ($event.detail.successful) tab = 'artworks'",
+                        },
+                        hx_get=f"/user/{user_id}/artworks.phtml",
+                        hx_push_url=f"/user/{user_id}.html?tab=artworks",
+                        hx_target="#artworks-list",
                     )["Artworks"],
                     h.a(
-                        href=f"/user/{user_id}.html?tab=favorites",
-                        class_={"active": tab == "favorites"},
+                        {
+                            "x-bind:class": 'tab == "favorites" ? "active": ""',
+                            "x-on:htmx:after-request": "if ($event.detail.successful) tab = 'favorites'",
+                        },
+                        hx_get=f"/user/{user_id}/favorite-artworks.phtml",
+                        hx_push_url=f"/user/{user_id}.html?tab=favorites",
+                        hx_target="#artworks-list",
                     )["Favorites"],
+                    # h.p(x_text="a")["loading..."],
                 ],
                 h.div(
-                    hx_get=sub_url,
-                    hx_trigger="load",
-                    id="artworks-render",
-                )["Loading artwork ... "],
+                    id="artworks-list",
+                )[sub_page],
             ],
         )
     )
@@ -372,7 +398,7 @@ def _list_user_artworks_base(user_id: int, db: SessionDep) -> Sequence[Artwork]:
 
 @router.get("/{user_id}/artworks", response_model=list[ArtworkPublic])
 def list_user_artworks(
-    user_artworks: Annotated[Sequence[Artwork], Depends(_list_user_artworks_base)]
+    user_artworks: Annotated[Sequence[Artwork], Depends(_list_user_artworks_base)],
 ):
     """list user artworks"""
     return user_artworks
@@ -406,7 +432,7 @@ def _list_user_favorite_artworks_base(user_id: int, db: SessionDep) -> list[Artw
 def list_user_favorite_artworks(
     user_favorite_artworks: Annotated[
         list[Artwork], Depends(_list_user_favorite_artworks_base)
-    ]
+    ],
 ):
     """List artworks favorited by user"""
     return user_favorite_artworks
@@ -420,6 +446,6 @@ def list_user_favorite_artworks(
 def list_user_favorite_artworks_partial_html(
     user_favorite_artworks: Annotated[
         list[Artwork], Depends(_list_user_favorite_artworks_base)
-    ]
+    ],
 ):
     return HTMLResponse(_render_artworks(user_favorite_artworks))

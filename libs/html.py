@@ -50,6 +50,7 @@ input, textarea, select, button {
 /* Reset link decoration */
 a {
   text-decoration: none;
+  cursor: pointer;
 }
 """
 _css_base = """
@@ -104,6 +105,7 @@ def page_layout(user: User | None, *, body=None):
             h.script(
                 src="/static/htmx-2.0.3.js",
             ),
+            h.script(src="https://unpkg.com/alpinejs"),
             h.script(src="/static/htmx-json-enc-2.0.1.js"),
         ],
         h.body[

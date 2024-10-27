@@ -26,7 +26,7 @@ def mount_apis(router: APIRouter):
 
     @router.get("/gallery", response_model=list[ArtworkPublic])
     def list_artworks(
-        artworks: Annotated[Sequence[Artwork], Depends(_list_artworks_base)]
+        artworks: Annotated[Sequence[Artwork], Depends(_list_artworks_base)],
     ):
         """List all artworks"""
         return artworks

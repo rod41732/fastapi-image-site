@@ -41,7 +41,9 @@ class User(UserBase, table=True):
     artworks: list["Artwork"] = Relationship(back_populates="author")
     comments: list[Union["Comment", None]] = Relationship(back_populates="author")
     favorite_artworks: list["Artwork"] = Relationship(
-        back_populates="favoriting_users", link_model=UserFavoriteArtwork
+        back_populates="favoriting_users",
+        link_model=UserFavoriteArtwork,
+        sa_relationship_kwargs={"overlaps": "user,artwork"},
     )
 
     created_at: datetime.datetime = Field(default_factory=_now)
@@ -79,7 +81,9 @@ class Artwork(ArtworkBase, table=True):
     author_id: Annotated[int | None, Field(index=True, foreign_key="user.id")] = None
     author: User | None = Relationship(back_populates="artworks")
     favoriting_users: list["User"] = Relationship(
-        back_populates="favorite_artworks", link_model=UserFavoriteArtwork
+        back_populates="favorite_artworks",
+        link_model=UserFavoriteArtwork,
+        sa_relationship_kwargs={"overlaps": "artwork,user"},
     )
 
     comments: list["Comment"] = Relationship(back_populates="artwork")
