@@ -1,7 +1,4 @@
-import http
-from math import e
 import random
-from re import L
 from typing import Annotated, Any, Sequence
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -332,7 +329,7 @@ def user_profile_page(
                 """
                     )
                 ],
-                h.p(class_="profile-header")[
+                h.p(class_="profile-header", hx_boost="true")[
                     h.a(
                         href=f"/user/{user_id}.html?tab=artworks",
                         class_={"active": tab == "artworks"},
@@ -384,7 +381,7 @@ def list_user_artworks(
 @router.get(
     "/{user_id}/artworks.phtml", response_class=HTMLResponse, include_in_schema=False
 )
-def list_user_artworks_html(
+def list_user_artworks_partial_html(
     user_artworks: Annotated[Sequence[Artwork], Depends(_list_user_artworks_base)],
 ):
     """partial HTML response for listing artworks"""
