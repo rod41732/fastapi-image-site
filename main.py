@@ -24,7 +24,9 @@ app.add_middleware(SessionMiddleware, secret_key=session_secret)
 app.include_router(user.router, prefix="/user", tags=["user"])
 app.include_router(dev.router, prefix="/_dev", tags=["dev"])
 app.include_router(artworks.router, prefix="/artworks", tags=["artworks"])
+
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/", response_class=RedirectResponse)

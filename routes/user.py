@@ -294,14 +294,68 @@ def _get_user_by_id_base(user_id: int, db: SessionDep):
 
 
 @router.get("/{user_id}.html", response_class=HTMLResponse, include_in_schema=False)
-def user_profile_page():
-    pass
+def user_profile_page(
+    user: Annotated[User, Depends(_get_user_by_id_base)],
+    current_user: CurrentUserOrNone,
+    user_id: int,
+    tab: str = "artworks",
+    # db: SessionDep,
+):
+    sub_url = f"/user/{user_id}/" + (
+        "artworks.phtml" if tab == "artworks" else "favorite-artworks.phtml"
+    )
+
+    return HTMLResponse(
+        page_layout(
+            user=current_user,
+            body=h.div(style="padding: 16px 24px")[
+                h.h1[f"{user.username}'s Profile"],
+                h.style[
+                    Markup(
+                        """
+                    .profile-header {
+                        padding: 8px 12px;
+                        background: #e1e1e1;
+                    }
+
+                    .profile-header > a {
+                        display: inline-block;
+                        margin: 0px 12px;
+                        font-weight: bold;
+                        padding: 0.25em 0.5em;
+                    }
+
+                    .profile-header > a.active { 
+                        background: grey;
+                        color: white;
+                    }
+                """
+                    )
+                ],
+                h.p(class_="profile-header")[
+                    h.a(
+                        href=f"/user/{user_id}.html?tab=artworks",
+                        class_={"active": tab == "artworks"},
+                    )["Artworks"],
+                    h.a(
+                        href=f"/user/{user_id}.html?tab=favorites",
+                        class_={"active": tab == "favorites"},
+                    )["Favorites"],
+                ],
+                h.div(
+                    hx_get=sub_url,
+                    hx_trigger="load",
+                    id="artworks-render",
+                )["Loading artwork ... "],
+            ],
+        )
+    )
 
 
 @router.get("/{user_id}", response_model=UserPublic)
 def get_user_by_id(user: Annotated[User, Depends(_get_user_by_id_base)]):
     """return user by ID"""
-    retur
+    return user
 
 
 def _list_user_artworks_base(user_id: int, db: SessionDep) -> Sequence[Artwork]:
@@ -332,20 +386,9 @@ def list_user_artworks(
 )
 def list_user_artworks_html(
     user_artworks: Annotated[Sequence[Artwork], Depends(_list_user_artworks_base)],
-    current_user: CurrentUserOrNone,
-    user_id: int,
-    db: SessionDep,
 ):
     """partial HTML response for listing artworks"""
-    try:
-        user = db.exec(
-            select(User).where(User.id == user_id),
-        ).one()
-        return HTMLResponse(
-            _render_artworks(user_artworks, title=f"{user.username}'s Artworks")
-        )
-    except sqlalchemy.exc.NoResultFound:
-        raise HTTPException(status_code=404, detail="User not found")
+    return HTMLResponse(_render_artworks(user_artworks))
 
 
 def _list_user_favorite_artworks_base(user_id: int, db: SessionDep) -> list[Artwork]:

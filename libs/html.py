@@ -102,11 +102,9 @@ def page_layout(user: User | None, *, body=None):
         h.head[
             CSS_BASE,
             h.script(
-                src="https://unpkg.com/htmx.org@2.0.3",
-                integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq",
-                crossorigin="anonymous",
+                src="/static/htmx-2.0.3.js",
             ),
-            h.script(src="https://unpkg.com/htmx-ext-json-enc@2.0.1/json-enc.js"),
+            h.script(src="/static/htmx-json-enc-2.0.1.js"),
         ],
         h.body[
             h.div(style="display: flex; flex-direction: column; height: 100vh;")[

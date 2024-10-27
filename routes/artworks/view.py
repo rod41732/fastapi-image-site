@@ -28,10 +28,10 @@ def _render_artwork(artwork: Artwork, *, extra_classes: list[str] | None = None)
 
 
 def _render_artworks(
-    artworks: Sequence[Artwork], *, title="Artworks", show_upload: bool = False
+    artworks: Sequence[Artwork], *, title: str | None = None, show_upload: bool = False
 ):
     return h.div(".container")[
-        h.h1[title],
+        title and h.h1[title],
         show_upload
         and h.details(style="margin-bottom: 16px")[
             h.summary["Upload new artwork"],
