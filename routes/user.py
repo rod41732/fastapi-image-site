@@ -1,15 +1,26 @@
+import http
+from math import e
 import random
-from typing import Annotated, Any
+from re import L
+from typing import Annotated, Any, Sequence
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from markupsafe import Markup
 from pydantic import BaseModel
-import sqlalchemy
+from sqlalchemy.orm import joinedload
 import sqlalchemy.exc
 import htpy as h
-from sqlmodel import select
+from sqlmodel import col, select
+from routes.artworks.view import _render_artworks
 
-from app.models import User, UserCreate, UserPublic
+from app.models import (
+    Artwork,
+    ArtworkPublic,
+    User,
+    UserCreate,
+    UserFavoriteArtwork,
+    UserPublic,
+)
 from libs.common import ErrorDetail, MessageResponse
 from libs.db import SessionDep
 from libs.dependencies import CurrentUser, CurrentUserOrNone
@@ -271,3 +282,104 @@ def logout_user_html(logout_result: Annotated[MessageResponse, Depends(_logout_b
 @router.post("/me", response_model=UserPublic)
 def get_current_user(user: CurrentUser):
     return user
+
+
+def _get_user_by_id_base(user_id: int, db: SessionDep):
+    """return user by ID"""
+    try:
+        user = db.exec(select(User).where(User.id == user_id)).one()
+        return user
+    except sqlalchemy.exc.NoResultFound:
+        raise HTTPException(status_code=404, detail="User not found")
+
+
+@router.get("/{user_id}.html", response_class=HTMLResponse, include_in_schema=False)
+def user_profile_page():
+    pass
+
+
+@router.get("/{user_id}", response_model=UserPublic)
+def get_user_by_id(user: Annotated[User, Depends(_get_user_by_id_base)]):
+    """return user by ID"""
+    retur
+
+
+def _list_user_artworks_base(user_id: int, db: SessionDep) -> Sequence[Artwork]:
+    """list user artworks"""
+    user_artworks = db.exec(
+        select(Artwork)
+        .options(
+            joinedload(Artwork.author),
+        )
+        .where(
+            Artwork.author_id == user_id,
+        )
+        .order_by(col(Artwork.created_at).desc())
+    ).all()
+    return user_artworks
+
+
+@router.get("/{user_id}/artworks", response_model=list[ArtworkPublic])
+def list_user_artworks(
+    user_artworks: Annotated[Sequence[Artwork], Depends(_list_user_artworks_base)]
+):
+    """list user artworks"""
+    return user_artworks
+
+
+@router.get(
+    "/{user_id}/artworks.phtml", response_class=HTMLResponse, include_in_schema=False
+)
+def list_user_artworks_html(
+    user_artworks: Annotated[Sequence[Artwork], Depends(_list_user_artworks_base)],
+    current_user: CurrentUserOrNone,
+    user_id: int,
+    db: SessionDep,
+):
+    """partial HTML response for listing artworks"""
+    try:
+        user = db.exec(
+            select(User).where(User.id == user_id),
+        ).one()
+        return HTMLResponse(
+            _render_artworks(user_artworks, title=f"{user.username}'s Artworks")
+        )
+    except sqlalchemy.exc.NoResultFound:
+        raise HTTPException(status_code=404, detail="User not found")
+
+
+def _list_user_favorite_artworks_base(user_id: int, db: SessionDep) -> list[Artwork]:
+    """return list of artworks favorited by user"""
+    favorites = db.exec(
+        select(UserFavoriteArtwork)
+        .options(
+            joinedload(UserFavoriteArtwork.artwork).joinedload(Artwork.author),
+        )
+        .where(UserFavoriteArtwork.user_id == user_id)
+        .order_by(col(UserFavoriteArtwork.favorited_at).desc())
+    )
+    favorited_artworks = [favorite.artwork for favorite in favorites]
+    return favorited_artworks
+
+
+@router.get("/{user_id}/favorite-artworks", response_model=list[ArtworkPublic])
+def list_user_favorite_artworks(
+    user_favorite_artworks: Annotated[
+        list[Artwork], Depends(_list_user_favorite_artworks_base)
+    ]
+):
+    """List artworks favorited by user"""
+    return user_favorite_artworks
+
+
+@router.get(
+    "/{user_id}/favorite-artworks.phtml",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+)
+def list_user_favorite_artworks_partial_html(
+    user_favorite_artworks: Annotated[
+        list[Artwork], Depends(_list_user_favorite_artworks_base)
+    ]
+):
+    return HTMLResponse(_render_artworks(user_favorite_artworks))

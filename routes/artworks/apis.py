@@ -34,9 +34,7 @@ def mount_apis(router: APIRouter):
             .options(
                 joinedload(UserFavoriteArtwork.artwork).joinedload(Artwork.author),
             )
-            .where(
-                UserFavoriteArtwork.user_id == user.id,
-            )
+            .where(UserFavoriteArtwork.user_id == user.id)
             .order_by(col(UserFavoriteArtwork.favorited_at).desc())
         )
         favorited_artworks = [favorite.artwork for favorite in favorites]
