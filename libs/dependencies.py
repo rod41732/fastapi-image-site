@@ -1,7 +1,9 @@
 from typing import Annotated
-from fastapi import Depends, HTTPException, Request
+
 import sqlalchemy.exc
+from fastapi import Depends, HTTPException, Request
 from sqlmodel import col, select
+
 from app.models import User
 from libs.db import SessionDep
 

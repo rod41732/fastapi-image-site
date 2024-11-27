@@ -1,8 +1,10 @@
 from typing import Sequence
+
+import htpy as h
+
 from app.models import (
     Artwork,
 )
-import htpy as h
 
 
 def _render_artwork(artwork: Artwork, *, extra_classes: list[str] | None = None):

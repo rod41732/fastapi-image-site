@@ -1,11 +1,12 @@
-from base64 import b64encode
-import re
-from fastapi import UploadFile
-import mimetypes
 import logging
+import mimetypes
 import os
+import re
 import shutil
 import time
+from base64 import b64encode
+
+from fastapi import UploadFile
 
 
 class UploadError(Exception):

@@ -1,15 +1,15 @@
 import json
 import random
 from typing import Annotated, Any, Sequence
+
+import htpy as h
+import sqlalchemy.exc
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from markupsafe import Markup
 from pydantic import BaseModel
 from sqlalchemy.orm import joinedload
-import sqlalchemy.exc
-import htpy as h
 from sqlmodel import col, select
-from routes.artworks.view import _render_artworks
 
 from app.models import (
     Artwork,
@@ -24,6 +24,7 @@ from libs.db import SessionDep
 from libs.dependencies import CurrentUser, CurrentUserOrNone
 from libs.html import make_redirect_response, page_layout
 from libs.password import PasswordValidationError, hash_password, verify_password
+from routes.artworks.view import _render_artworks
 
 router = APIRouter()
 

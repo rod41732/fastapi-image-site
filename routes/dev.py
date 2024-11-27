@@ -1,14 +1,14 @@
 import datetime
+import os
 from typing import Annotated
+
 from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from pydantic import BaseModel
 from sqlmodel import SQLModel, col, select
 
 from app.models import User
 from constants import UPLOAD_DIR
-from libs.db import create_db_and_tables, SessionDep
-import os
-
+from libs.db import SessionDep, create_db_and_tables
 from libs.upload import save_file
 
 router = APIRouter()

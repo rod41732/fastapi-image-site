@@ -1,19 +1,20 @@
-from operator import or_
 from typing import Annotated, Sequence
+
+import htpy as h
 from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 from markupsafe import Markup
+from sqlalchemy.orm import joinedload
 from sqlmodel import col, select
+
 from app.models import (
     Artwork,
     ArtworkPublic,
 )
 from libs.db import SessionDep
-from libs.html import page_layout
 from libs.dependencies import CurrentUserOrNone
-from sqlalchemy.orm import joinedload
-from sqlalchemy import or_
-import htpy as h
+from libs.html import page_layout
+
 from .view import _render_artworks
 
 

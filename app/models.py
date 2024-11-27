@@ -1,7 +1,8 @@
 import datetime
 from typing import Annotated, Union
+
 from pydantic import BaseModel
-from sqlmodel import Relationship, SQLModel, Field
+from sqlmodel import Field, Relationship, SQLModel
 
 
 def _now():

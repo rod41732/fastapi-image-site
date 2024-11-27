@@ -1,17 +1,20 @@
 import os
 from typing import Annotated
+
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse
+from PIL import Image
 from pydantic import BaseModel
+
 from app.models import (
     Artwork,
     ArtworkPublic,
 )
 from constants import UPLOAD_DIR
 from libs.db import SessionDep
-from libs.upload import save_file
 from libs.dependencies import CurrentUser
-from PIL import Image
+from libs.upload import save_file
+
 from .view import _render_artwork
 
 

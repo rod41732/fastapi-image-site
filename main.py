@@ -4,18 +4,15 @@ import sys
 
 sys.path.append(os.path.dirname(__file__))
 
+import htpy as h
 from fastapi import FastAPI
-
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-
-
-from libs.html import page_layout
 from starlette.middleware.sessions import SessionMiddleware
-from routes import user, dev, artworks
-from libs.dependencies import CurrentUserOrNone
-import htpy as h
 
+from libs.dependencies import CurrentUserOrNone
+from libs.html import page_layout
+from routes import artworks, dev, user
 
 app = FastAPI()
 

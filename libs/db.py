@@ -1,8 +1,8 @@
 from typing import Annotated
+
 from fastapi import Depends
 from sqlalchemy import create_engine
-from sqlmodel import SQLModel, Session
-
+from sqlmodel import Session, SQLModel
 
 # sqlite_filename = "database.db"
 db_url = "postgresql://postgres:postgres@127.0.0.1:5435/image_site"

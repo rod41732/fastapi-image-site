@@ -1,9 +1,8 @@
+import htpy as h
 from fastapi.responses import HTMLResponse
 from markupsafe import Markup
-import htpy as h
 
 from app.models import User
-
 
 _css_reset = """
 /* Reset for margins and paddings only, preserving all other styles */

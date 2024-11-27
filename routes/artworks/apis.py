@@ -1,8 +1,13 @@
 from typing import Annotated, Any, Sequence
+
+import htpy as h
+import sqlalchemy
+import sqlalchemy.exc
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
-import sqlalchemy
+from sqlalchemy.orm import joinedload
 from sqlmodel import col, select
+
 from app.models import (
     Artwork,
     ArtworkDetailed,
@@ -17,11 +22,9 @@ from app.models import (
 )
 from libs.common import ErrorDetail, MessageResponse
 from libs.db import SessionDep
-from libs.html import page_layout
 from libs.dependencies import CurrentUser, CurrentUserOrNone
-from sqlalchemy.orm import joinedload
-import sqlalchemy.exc
-import htpy as h
+from libs.html import page_layout
+
 from .view import _render_artworks
 
 
