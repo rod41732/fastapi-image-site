@@ -22,6 +22,7 @@ app = FastAPI()
 session_secret = "very-secret-string"
 app.add_middleware(SessionMiddleware, secret_key=session_secret)
 app.include_router(user.router, prefix="/user", tags=["user"])
+# /user/login
 app.include_router(dev.router, prefix="/_dev", tags=["dev"])
 app.include_router(artworks.router, prefix="/artworks", tags=["artworks"])
 
